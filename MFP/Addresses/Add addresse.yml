@@ -1,0 +1,26 @@
+info:
+  name: Add addresse
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/addresses"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MTg0MjMwOX0.zoWngAAY9LB9S2dn0GMVIH0ZtgdGiA0_Lp-c6XBq5h0
+  body:
+    type: json
+    data: |-
+      {
+        "name": "Ma Maison",
+        "searchWord": "10 rue de la Paix, Paris",
+        "description": "C'est chez moi !"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

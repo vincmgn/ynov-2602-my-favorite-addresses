@@ -1,0 +1,18 @@
+info:
+  name: Addresses List
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/addresses"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MTg0MjMwOX0.zoWngAAY9LB9S2dn0GMVIH0ZtgdGiA0_Lp-c6XBq5h0
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
