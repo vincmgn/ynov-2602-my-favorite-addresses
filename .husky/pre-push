@@ -1,0 +1,1 @@
+yarn --cwd server test && yarn --cwd server tsc --noEmit

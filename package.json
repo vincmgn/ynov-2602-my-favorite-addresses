@@ -1,0 +1,14 @@
+{
+  "name": "ynov-2602-my-favorite-addresses",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/vincmgn/ynov-2602-my-favorite-addresses.git",
+  "author": "Vincent Magnien <vincentmagnienpro@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "husky": "^9.1.7"
+  },
+  "scripts": {
+    "prepare": "husky"
+  }
+}
