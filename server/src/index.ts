@@ -1,7 +1,7 @@
 import app from "./app";
 import datasource from "./datasource";
 
-const port = process.env.PORT ? Number(process.env.PORT) : 3000;
+const port = process.env.PORT ? Number(process.env.PORT) : 5050;
 
 async function startApp() {
   console.log(`⏳ starting server`);
@@ -18,9 +18,7 @@ async function startApp() {
       }
     });
   } catch (err) {
-    console.error(
-      `🚨 unable to connect to db: ${err?.message || JSON.stringify(err)}`,
-    );
+    console.error(`🚨 unable to connect to db: ${err?.message || JSON.stringify(err)}`);
   }
 }
 
