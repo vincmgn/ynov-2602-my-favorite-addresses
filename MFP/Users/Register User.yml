@@ -10,10 +10,18 @@ http:
     type: json
     data: |-
       {
-        "email": "manon@example.com",
-        "password": "mon_mot_de_passe"
+        "email": "{{current_email}}",
+        "password": "supersecret"
       }
   auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const randomId = Math.random().toString(36).substring(7);
+        const email = `test-${randomId}@test.com`;
+        bru.setVar("current_email", email);
 
 settings:
   encodeUrl: true
