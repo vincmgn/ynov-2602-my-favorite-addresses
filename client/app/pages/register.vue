@@ -27,9 +27,6 @@ const handleRegister = async () => {
       credentials: "include",
     });
 
-    if (import.meta.client) {
-      console.log("Registration successful, redirecting...");
-    }
     successMessage.value = "Compte créé avec succès !";
 
     setTimeout(() => {
