@@ -22,6 +22,9 @@ usersRouter.post("/", async (req, res) => {
     user.email = email;
     user.hashedPassword = await argon2.hash(password);
     await user.save();
+
+    delete user.hashedPassword;
+
     return res.json({ item: user });
   } catch (e) {
     console.error(`🆘 got error: ${JSON.stringify(e)}`, e);
