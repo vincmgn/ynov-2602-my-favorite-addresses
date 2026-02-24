@@ -38,30 +38,18 @@ const handleLogout = async () => {
           </p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="">
           <div
             class="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
           >
             <h3 class="font-bold text-gray-900 mb-2">Mes Adresses</h3>
             <p class="text-sm text-gray-500">Gérez vos adresses favorites enregistrées.</p>
             <NuxtLink
-              to="/addresses"
+              to="/map"
               class="inline-block mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-500"
             >
               Voir tout →
             </NuxtLink>
-          </div>
-          <div
-            class="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-          >
-            <h3 class="font-bold text-gray-900 mb-2">Paramètres</h3>
-            <p class="text-sm text-gray-500">Modifiez vos informations de profil.</p>
-            <a
-              href="#"
-              class="inline-block mt-4 text-sm font-semibold text-gray-400 cursor-not-allowed"
-            >
-              Bientôt disponible
-            </a>
           </div>
         </div>
       </div>

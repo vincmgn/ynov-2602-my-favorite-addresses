@@ -8,7 +8,7 @@ http:
   url: "{{baseUrl}}/addresses"
   headers:
     - name: Authorization
-      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MTg0MjMwOX0.zoWngAAY9LB9S2dn0GMVIH0ZtgdGiA0_Lp-c6XBq5h0
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE5LCJpYXQiOjE3NzE4NjEwMjF9.kNFzNLmMyzmB0e_vkwqlCupgoTQZ3dRotZ5zhBH6h7Q
   auth: inherit
 
 settings:
