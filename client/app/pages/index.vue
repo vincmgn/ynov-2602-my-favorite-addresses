@@ -1,75 +1,203 @@
 <script setup lang="ts">
-const config = useRuntimeConfig();
+import { ref, onMounted, watch, computed } from "vue";
+import { useCookie, useRuntimeConfig, navigateTo, useFetch } from "#app";
+import type { Map, Marker } from "leaflet";
+
+interface Address {
+  id: number;
+  name: string;
+  description?: string;
+  lat: number;
+  lng: number;
+}
+
+// Authentication check
 const authToken = useCookie("auth_token");
+if (!authToken.value) {
+  navigateTo("/login");
+}
 
-const { data: user, error } = await useFetch<{ item: Record<string, unknown> }>(
-  `${config.public.apiBase}/users/me`,
-  {
-    headers: computed(() => ({
-      Authorization: authToken.value ? `Bearer ${authToken.value}` : "",
-    })),
+// This component (index.vue) is a page, not a child component, so it doesn't receive props.
+// The `_props` definition was likely a leftover or misunderstanding.
+// We manage the modal's open state internally with `isModalOpen`.
+// const _props = defineProps<{
+//   isOpen: boolean;
+// }>();
+
+const config = useRuntimeConfig();
+const mapContainer = ref<HTMLElement | null>(null);
+const searchQuery = ref("");
+const markersList = ref<Marker[]>([]);
+const fetchBaseURL = import.meta.server ? "http://127.0.0.1:5050/api" : config.public.apiBase;
+
+// State for the AddressFormModal
+const isModalOpen = ref(false);
+
+// Fetch favorites from backend
+const { data, refresh } = await useFetch<{ items: Address[] }>(`${fetchBaseURL}/addresses`, {
+  headers: computed(() => ({
+    Authorization: `Bearer ${authToken.value}`,
+  })),
+});
+
+const favorites = ref<Address[]>(data.value?.items || []);
+
+// Reactivity for props if ever needed (prevents lint error)
+// console.log("Modal is open:", _props.isOpen); // This line is now commented out as _props is removed.
+
+const handleModalSuccess = async () => {
+  await refresh();
+  if (data.value?.items) {
+    favorites.value = data.value.items;
   }
-);
-
-const handleLogout = async () => {
-  authToken.value = null;
-  await navigateTo("/login");
+  isModalOpen.value = false;
 };
+
+// Leaflet variables
+let map: Map | null = null;
+let leafletLib: typeof import("leaflet") | null = null;
+
+const updateMarkers = () => {
+  if (!map || !leafletLib) return;
+
+  // Clear existing markers
+  markersList.value.forEach((m) => {
+    if (map) map.removeLayer(m);
+  });
+  markersList.value = [];
+
+  const filteredFavorites = favorites.value.filter((f) =>
+    f.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    (f.description && f.description.toLowerCase().includes(searchQuery.value.toLowerCase()))
+  );
+
+  const customIcon = leafletLib.divIcon({
+    html: '<i class="fa-solid fa-location-dot text-indigo-600 text-3xl"></i>',
+    className: "custom-div-icon",
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24],
+  });
+
+  filteredFavorites.forEach((fav) => {
+    const marker = leafletLib.marker([fav.lat, fav.lng], { icon: customIcon })
+      .addTo(map as Map) // Cast map to Map as it's checked above
+      .bindPopup(`<strong>${fav.name}</strong><br>${fav.description || ""}`);
+    markersList.value.push(marker);
+  });
+
+  // If there are markers, fit bounds
+  if (markersList.value.length > 0) {
+    const group = leafletLib.featureGroup(markersList.value);
+    map.fitBounds(group.getBounds().pad(0.1));
+  }
+};
+
+onMounted(async () => {
+  // Import Leaflet only on client side
+  leafletLib = await import("leaflet");
+
+  if (data.value?.items) {
+    favorites.value = data.value.items;
+  }
+
+  // Initialize map
+  if (mapContainer.value && leafletLib) {
+    map = leafletLib.map(mapContainer.value).setView([46.603354, 1.888334], 6); // Center of France
+
+    leafletLib.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+
+    updateMarkers();
+  }
+});
+
+const handleSearch = () => {
+  updateMarkers();
+};
+
+// Re-run search/filter when query changes
+watch(searchQuery, () => {
+  updateMarkers();
+});
+
+// Watch data for refreshes
+watch(() => data.value, (newData) => {
+  if (newData?.items) {
+    favorites.value = newData.items;
+    updateMarkers();
+  }
+}, { deep: true });
 </script>
 
 <template>
-  <div class="flex min-h-full items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4">
-    <div class="w-full max-w-2xl bg-white rounded-3xl shadow-xl p-8 border border-gray-100">
-      <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Tableau de bord</h1>
-        <button class="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors" @click="handleLogout">
-          Se déconnecter
+  <div class="h-screen w-full flex flex-col overflow-hidden bg-gray-50">
+    <header class="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
+      <div
+        class="bg-white/90 backdrop-blur-md shadow-2xl border border-white/20 rounded-2xl p-2 flex items-center gap-2 mt-20">
+        <div class="relative flex-1">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+            <i class="fa-solid fa-magnifying-glass" />
+          </span>
+          <input v-model="searchQuery" type="text" placeholder="Rechercher une adresse favorite..."
+            class="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl leading-5 bg-transparent placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm transition-all"
+            @keyup.enter="handleSearch">
+        </div>
+        <button
+          class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-lg shadow-indigo-200 shrink-0"
+          @click="isModalOpen = true">
+          <i class="fa-solid fa-plus mr-2" />
+          <span>Ajouter</span>
         </button>
       </div>
+    </header>
 
-      <div v-if="user?.item" class="space-y-6">
-        <div class="bg-indigo-50 rounded-2xl p-6 border border-indigo-100">
-          <h2 class="text-lg font-semibold text-indigo-900 mb-2">Bienvenue de retour !</h2>
-          <p class="text-indigo-700">
-            Vous êtes connecté en tant que <span class="font-bold">{{ user.item.email }}</span>
-          </p>
-        </div>
+    <!-- Map Container -->
+    <main class="flex-1 relative">
+      <div ref="mapContainer" class="absolute inset-0 z-0" />
 
-        <div class="">
-          <div class="p-6 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <h3 class="font-bold text-gray-900 mb-2">Mes Adresses</h3>
-            <p class="text-sm text-gray-500">Gérez vos adresses favorites enregistrées.</p>
-            <NuxtLink to="/map" class="inline-block mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-500">
-              Voir tout →
-            </NuxtLink>
-          </div>
+      <div v-if="favorites.length === 0"
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-sm">
+        <div class="text-indigo-100 mb-4">
+          <i class="fa-solid fa-map-location-dot text-6xl" />
         </div>
-      </div>
-
-      <div v-else-if="error" class="text-center py-12">
-        <div class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 mb-4">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-        </div>
-        <h2 class="text-xl font-bold text-gray-900">Session expirée</h2>
-        <p class="mt-2 text-gray-500 mb-6">
-          Veuillez vous reconnecter pour accéder à vos adresses.
+        <h3 class="text-lg font-bold text-gray-900 mb-2">Aucune adresse trouvée</h3>
+        <p class="text-gray-500 text-sm mb-6">Commencez par ajouter vos adresses favorites depuis votre tableau de bord.
         </p>
-        <NuxtLink to="/login"
-          class="inline-flex items-center justify-center px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors">
-          S'identifier
+        <NuxtLink to="/account"
+          class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors">
+          Tableau de bord
         </NuxtLink>
       </div>
+    </main>
 
-      <div v-else class="text-center py-12">
-        <div class="animate-pulse flex flex-col items-center">
-          <div class="h-12 w-12 bg-gray-200 rounded-full mb-4" />
-          <div class="h-4 w-48 bg-gray-200 rounded mb-2" />
-          <div class="h-3 w-32 bg-gray-200 rounded" />
-        </div>
-      </div>
-    </div>
+    <AddressFormModal :is-open="isModalOpen" @close="isModalOpen = false" @success="handleModalSuccess" />
   </div>
 </template>
+
+<style>
+.custom-div-icon {
+  background: transparent;
+  border: none;
+}
+
+.custom-div-icon i {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Ensure leaflet popup looks modern */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.leaflet-popup-content {
+  margin: 13px 19px;
+  line-height: 1.4;
+}
+
+.leaflet-container {
+  font-family: inherit;
+}
+</style>
