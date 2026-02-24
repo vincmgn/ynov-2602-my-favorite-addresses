@@ -12,13 +12,15 @@ export default defineNuxtPlugin(async () => {
         token.value.substring(0, 10) + "..."
       );
     try {
-      const { item: user } = await $fetch<{ item: any }>(`${baseURL}/users/me`, {
+      const { item: user } = await $fetch<{
+        item: { id: number; email: string; name?: string };
+      }>(`${baseURL}/users/me`, {
         headers: {
           Authorization: `Bearer ${token.value}`,
         },
       });
       userStore.setUser(user);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to restore user session:", error);
     }
   }

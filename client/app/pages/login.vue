@@ -24,8 +24,9 @@ const handleLogin = async () => {
     const token = useCookie("auth_token");
     token.value = response.token;
 
-    // Fetch user info to populate the store
-    const { item: user } = await $fetch<{ item: any }>(`${config.public.apiBase}/users/me`, {
+    const { item: user } = await $fetch<{
+      item: { id: number; email: string; name?: string };
+    }>(`${config.public.apiBase}/users/me`, {
       headers: {
         Authorization: `Bearer ${response.token}`,
       },
