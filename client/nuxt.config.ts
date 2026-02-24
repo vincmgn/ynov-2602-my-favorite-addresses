@@ -18,19 +18,14 @@ export default defineNuxtConfig({
     },
   },
   devServer: {
-    port: 3333,
+    port: 5173,
   },
   runtimeConfig: {
     public: {
       apiBase: "/api",
     },
   },
-  nitro: {
-    devProxy: {
-      "/api": {
-        target: "http://localhost:5050/api",
-        changeOrigin: true,
-      },
-    },
+  routeRules: {
+    "/api/**": { proxy: "http://127.0.0.1:5050/api/**" },
   },
 });

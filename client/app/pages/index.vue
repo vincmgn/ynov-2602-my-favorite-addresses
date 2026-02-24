@@ -25,6 +25,8 @@ const fetchBaseURL = config.public.apiBase;
 const isModalOpen = ref(false);
 
 const { data, refresh } = useFetch<{ items: Address[] }>(`${fetchBaseURL}/addresses`, {
+  immediate: !!authToken.value,
+  watch: false, // On ne veut pas qu'il s'auto-refresh sur le token ici
   headers: computed(() => ({
     Authorization: `Bearer ${authToken.value}`,
   })),
@@ -128,26 +130,18 @@ watch(
   <div class="h-screen w-full flex flex-col overflow-hidden bg-gray-50">
     <header class="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-2xl px-4">
       <div
-        class="bg-white/90 backdrop-blur-md shadow-2xl border border-white/20 rounded-2xl p-2 flex items-center gap-2 mt-20"
-      >
+        class="bg-white/90 backdrop-blur-md shadow-2xl border border-white/20 rounded-2xl p-2 flex items-center gap-2 mt-20">
         <div class="relative flex-1">
-          <span
-            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"
-          >
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
             <i class="fa-solid fa-magnifying-glass" />
           </span>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Rechercher une adresse favorite..."
+          <input v-model="searchQuery" type="text" placeholder="Rechercher une adresse favorite..."
             class="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl leading-5 bg-transparent placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 sm:text-sm transition-all"
-            @keyup.enter="handleSearch"
-          />
+            @keyup.enter="handleSearch" />
         </div>
         <button
           class="inline-flex items-center px-4 py-2.5 border border-transparent text-sm font-semibold rounded-xl text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all shadow-lg shadow-indigo-200 shrink-0"
-          @click="isModalOpen = true"
-        >
+          @click="isModalOpen = true">
           <i class="fa-solid fa-plus mr-2" />
           <span>Ajouter</span>
         </button>
@@ -158,10 +152,8 @@ watch(
     <main class="flex-1 relative">
       <div ref="mapContainer" class="absolute inset-0 z-0" />
 
-      <div
-        v-if="favorites.length === 0"
-        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-sm"
-      >
+      <div v-if="favorites.length === 0"
+        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[1001] bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 text-center max-w-sm">
         <div class="text-indigo-100 mb-4">
           <i class="fa-solid fa-map-location-dot text-6xl" />
         </div>
@@ -169,20 +161,14 @@ watch(
         <p class="text-gray-500 text-sm mb-6">
           Commencez par ajouter vos adresses favorites depuis votre tableau de bord.
         </p>
-        <NuxtLink
-          to="/account"
-          class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors"
-        >
+        <NuxtLink to="/account"
+          class="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition-colors">
           Tableau de bord
         </NuxtLink>
       </div>
     </main>
 
-    <AddressFormModal
-      :is-open="isModalOpen"
-      @close="isModalOpen = false"
-      @success="handleModalSuccess"
-    />
+    <AddressFormModal :is-open="isModalOpen" @close="isModalOpen = false" @success="handleModalSuccess" />
   </div>
 </template>
 
