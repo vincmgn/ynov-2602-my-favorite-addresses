@@ -5,6 +5,8 @@ const password = ref("");
 const isLoading = ref(false);
 const errorMessage = ref("");
 
+const userStore = useUserStore();
+
 const handleLogin = async () => {
   isLoading.value = true;
   errorMessage.value = "";
@@ -21,6 +23,15 @@ const handleLogin = async () => {
 
     const token = useCookie("auth_token");
     token.value = response.token;
+
+    // Fetch user info to populate the store
+    const { item: user } = await $fetch<{ item: any }>(`${config.public.apiBase}/users/me`, {
+      headers: {
+        Authorization: `Bearer ${response.token}`,
+      },
+    });
+
+    userStore.setUser(user);
 
     await navigateTo("/");
   } catch (error: unknown) {
