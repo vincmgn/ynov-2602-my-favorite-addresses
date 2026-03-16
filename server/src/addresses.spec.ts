@@ -216,4 +216,54 @@ describe("Addresses Controller Integration Tests", () => {
       expect(response.body.message).toBe("forbidden");
     });
   });
+
+  describe("PUT /api/addresses/:id", () => {
+    let addressToUpdateId: number;
+    let addressOwnedByOtherUserId: number;
+
+    beforeAll(async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          features: [{ geometry: { coordinates: [2.3522, 48.8566] } }],
+        },
+      });
+
+      // Create an address owned by the main user
+      const res = await request(app).post("/api/addresses").set("Authorization", `Bearer ${authToken}`).send({ name: "Address To Update", searchWord: "Paris", description: "Old description" });
+      addressToUpdateId = res.body.item.id;
+
+      // Create an address owned by the OTHER user
+      const otherRes = await request(app).post("/api/addresses").set("Authorization", `Bearer ${otherAuthToken}`).send({ name: "Other User Address For PUT", searchWord: "Paris" });
+      addressOwnedByOtherUserId = otherRes.body.item.id;
+    });
+
+    test("should update name and description of an address that belongs to the current user", async () => {
+      const response = await request(app).put(`/api/addresses/${addressToUpdateId}`).set("Authorization", `Bearer ${authToken}`).send({ name: "Updated Name", description: "New description" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.item.name).toBe("Updated Name");
+      expect(response.body.item.description).toBe("New description");
+    });
+
+    test("should return 404 when updating a non-existent address", async () => {
+      const response = await request(app).put("/api/addresses/99999").set("Authorization", `Bearer ${authToken}`).send({ name: "Whatever" });
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("address not found");
+    });
+
+    test("should return 403 when updating an address owned by another user", async () => {
+      const response = await request(app).put(`/api/addresses/${addressOwnedByOtherUserId}`).set("Authorization", `Bearer ${authToken}`).send({ name: "Hacked name" });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe("forbidden");
+    });
+
+    test("should return 400 when body has no valid fields to update", async () => {
+      const response = await request(app).put(`/api/addresses/${addressToUpdateId}`).set("Authorization", `Bearer ${authToken}`).send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("at least one field (name or description) is required");
+    });
+  });
 });
