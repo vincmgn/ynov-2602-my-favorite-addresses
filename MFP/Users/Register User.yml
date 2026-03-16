@@ -1,0 +1,30 @@
+info:
+  name: Register User
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/users"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "{{current_email}}",
+        "password": "supersecret"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const randomId = Math.random().toString(36).substring(7);
+        const email = `test-${randomId}@test.com`;
+        bru.setVar("current_email", email);
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

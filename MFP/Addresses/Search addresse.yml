@@ -1,0 +1,28 @@
+info:
+  name: Search addresse
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/addresses/searches"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MTg0MjMwOX0.zoWngAAY9LB9S2dn0GMVIH0ZtgdGiA0_Lp-c6XBq5h0
+  body:
+    type: json
+    data: |-
+      {
+        "radius": 5,
+        "from": {
+          "lat": 48.8566,
+          "lng": 2.3522
+        }
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

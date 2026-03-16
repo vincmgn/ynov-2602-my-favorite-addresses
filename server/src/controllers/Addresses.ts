@@ -4,6 +4,7 @@ import { Address } from "../entities/Address";
 import { isAuthorized } from "../utils/isAuthorized";
 import { getUserFromRequest } from "../utils/getUserFromRequest";
 import { getDistance } from "../utils/getDistance";
+import { checkOwnership, findAddressAndCheckOwnership } from "../utils/checkOwnership";
 
 const addressesRouter = Router();
 
@@ -13,9 +14,7 @@ addressesRouter.post("/", isAuthorized, async (req, res) => {
   const description = req.body.description;
 
   if (!searchWord || !name) {
-    return res
-      .status(400)
-      .json({ message: `name and search word are required` });
+    return res.status(400).json({ message: `name and search word are required` });
   }
 
   const coordinates = await getCoordinatesFromSearch(searchWord);
@@ -44,20 +43,12 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
   const radius = req.body.radius;
 
   if (!radius || typeof radius !== "number" || radius < 0) {
-    return res
-      .status(400)
-      .json({ message: `radius is required, must be a positive number` });
+    return res.status(400).json({ message: `radius is required, must be a positive number` });
   }
 
   const from = req.body.from;
 
-  if (
-    !from ||
-    !from.lng ||
-    !from.lat ||
-    typeof from.lng !== "number" ||
-    typeof from.lat !== "number"
-  ) {
+  if (!from || !from.lng || !from.lat || typeof from.lng !== "number" || typeof from.lat !== "number") {
     return res.status(400).json({
       message: `from object must contain lat and lng props, both numbers`,
     });
@@ -74,6 +65,37 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
   }
 
   return res.json({ items: closeAddresses });
+});
+
+addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const user = await getUserFromRequest(req);
+  const address = await findAddressAndCheckOwnership(id, user.id, res);
+
+  if (!address) return;
+
+  await address.remove();
+  return res.json({ success: true });
+});
+
+addressesRouter.put("/:id", isAuthorized, async (req, res) => {
+  const id = parseInt(req.params.id as string);
+  const { name, description } = req.body;
+
+  if (!name && description === undefined) {
+    return res.status(400).json({ message: "at least one field (name or description) is required" });
+  }
+
+  const user = await getUserFromRequest(req);
+  const address = await findAddressAndCheckOwnership(id, user.id, res);
+
+  if (!address) return;
+
+  if (name) address.name = name;
+  if (description !== undefined) address.description = description;
+
+  await address.save();
+  return res.json({ item: address });
 });
 
 export default addressesRouter;

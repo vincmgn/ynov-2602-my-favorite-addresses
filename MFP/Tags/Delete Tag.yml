@@ -1,0 +1,18 @@
+info:
+  name: Remove Tag from Address
+  type: http
+  seq: 2
+
+http:
+  method: DELETE
+  url: "{{baseUrl}}/addresses/{{addressId}}/tags/Restaurant"
+  headers: []
+  body:
+    type: none
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

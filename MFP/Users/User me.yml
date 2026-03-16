@@ -1,0 +1,18 @@
+info:
+  name: User me
+  type: http
+  seq: 4
+
+http:
+  method: GET
+  url: "{{baseUrl}}/users/me"
+  headers:
+    - name: Authorization
+      value: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjE5LCJpYXQiOjE3NzE4NjEwMjF9.kNFzNLmMyzmB0e_vkwqlCupgoTQZ3dRotZ5zhBH6h7Q
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
