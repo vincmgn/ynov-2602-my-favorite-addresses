@@ -2,14 +2,7 @@
 import { ref, onMounted, watch, computed } from "vue";
 import { useCookie, useRuntimeConfig, navigateTo, useFetch } from "#app";
 import type { Map, Marker } from "leaflet";
-
-interface Address {
-  id: number;
-  name: string;
-  description?: string;
-  lat: number;
-  lng: number;
-}
+import type { Address } from "~/types";
 
 const authToken = useCookie("auth_token");
 if (!authToken.value) {
@@ -23,6 +16,7 @@ const markersList = ref<Marker[]>([]);
 const fetchBaseURL = config.public.apiBase;
 
 const isModalOpen = ref(false);
+const selectedAddress = ref<Address | null>(null);
 
 const { data, refresh } = useFetch<{ items: Address[] }>(`${fetchBaseURL}/addresses`, {
   immediate: !!authToken.value,
@@ -40,6 +34,28 @@ const handleModalSuccess = async () => {
     favorites.value = data.value.items;
   }
   isModalOpen.value = false;
+  selectedAddress.value = null;
+};
+
+const handleEdit = (fav: Address) => {
+  selectedAddress.value = fav;
+  isModalOpen.value = true;
+};
+
+const handleDelete = async (id: number) => {
+  if (!confirm("Voulez-vous vraiment supprimer cette adresse ?")) return;
+
+  try {
+    await $fetch(`${fetchBaseURL}/addresses/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${authToken.value}`,
+      },
+    });
+    await handleModalSuccess();
+  } catch (error) {
+    console.error("Failed to delete:", error);
+  }
 };
 
 // Leaflet variables
@@ -71,10 +87,36 @@ const updateMarkers = () => {
 
   filteredFavorites.forEach((fav) => {
     if (!leafletLib) return;
+
+    // Create popup container
+    const popupContent = document.createElement("div");
+    popupContent.className = "p-1 min-w-[150px]";
+    popupContent.innerHTML = `
+      <div class="mb-3">
+        <strong class="text-gray-900 block text-sm">${fav.name}</strong>
+        <span class="text-gray-500 text-xs">${fav.description || "Pas de description"}</span>
+      </div>
+      <div class="flex gap-2 pt-2 border-t border-gray-100">
+        <button id="edit-${fav.id}" class="flex-1 bg-indigo-50 text-indigo-600 px-2 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors">
+          <i class="fa-solid fa-pen mr-1"></i> Modifier
+        </button>
+        <button id="del-${fav.id}" class="flex-1 bg-red-50 text-red-600 px-2 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition-colors">
+          <i class="fa-solid fa-trash mr-1"></i>
+        </button>
+      </div>
+    `;
+
+    // Wait bit for leaflet to render or just attach after adding to map
     const marker = leafletLib
       .marker([fav.lat, fav.lng], { icon: customIcon })
       .addTo(map as Map)
-      .bindPopup(`<strong>${fav.name}</strong><br>${fav.description || ""}`);
+      .bindPopup(popupContent);
+
+    marker.on("popupopen", () => {
+      document.getElementById(`edit-${fav.id}`)?.addEventListener("click", () => handleEdit(fav));
+      document.getElementById(`del-${fav.id}`)?.addEventListener("click", () => handleDelete(fav.id));
+    });
+
     markersList.value.push(marker);
   });
 
@@ -168,7 +210,10 @@ watch(
       </div>
     </main>
 
-    <AddressFormModal :is-open="isModalOpen" @close="isModalOpen = false" @success="handleModalSuccess" />
+    <AddressFormModal :is-open="isModalOpen" :address="selectedAddress" @close="
+      isModalOpen = false;
+    selectedAddress = null;
+    " @success="handleModalSuccess" />
   </div>
 </template>
 
