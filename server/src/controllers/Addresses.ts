@@ -4,6 +4,7 @@ import { Address } from "../entities/Address";
 import { isAuthorized } from "../utils/isAuthorized";
 import { getUserFromRequest } from "../utils/getUserFromRequest";
 import { getDistance } from "../utils/getDistance";
+import { checkOwnership } from "../utils/checkOwnership";
 
 const addressesRouter = Router();
 
@@ -76,7 +77,7 @@ addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
 
   const user = await getUserFromRequest(req);
 
-  if (address.user.id !== user.id) {
+  if (!checkOwnership(address, user.id)) {
     return res.status(403).json({ message: "forbidden" });
   }
 
