@@ -68,7 +68,7 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
 });
 
 addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const user = await getUserFromRequest(req);
   const address = await findAddressAndCheckOwnership(id, user.id, res);
 
@@ -79,7 +79,7 @@ addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
 });
 
 addressesRouter.put("/:id", isAuthorized, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   const { name, description } = req.body;
 
   if (!name && description === undefined) {
