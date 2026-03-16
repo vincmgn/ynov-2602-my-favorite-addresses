@@ -13,9 +13,7 @@ addressesRouter.post("/", isAuthorized, async (req, res) => {
   const description = req.body.description;
 
   if (!searchWord || !name) {
-    return res
-      .status(400)
-      .json({ message: `name and search word are required` });
+    return res.status(400).json({ message: `name and search word are required` });
   }
 
   const coordinates = await getCoordinatesFromSearch(searchWord);
@@ -44,20 +42,12 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
   const radius = req.body.radius;
 
   if (!radius || typeof radius !== "number" || radius < 0) {
-    return res
-      .status(400)
-      .json({ message: `radius is required, must be a positive number` });
+    return res.status(400).json({ message: `radius is required, must be a positive number` });
   }
 
   const from = req.body.from;
 
-  if (
-    !from ||
-    !from.lng ||
-    !from.lat ||
-    typeof from.lng !== "number" ||
-    typeof from.lat !== "number"
-  ) {
+  if (!from || !from.lng || !from.lat || typeof from.lng !== "number" || typeof from.lat !== "number") {
     return res.status(400).json({
       message: `from object must contain lat and lng props, both numbers`,
     });
@@ -74,6 +64,24 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
   }
 
   return res.json({ items: closeAddresses });
+});
+
+addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const address = await Address.findOne({ where: { id }, relations: ["user"] });
+
+  if (!address) {
+    return res.status(404).json({ message: "address not found" });
+  }
+
+  const user = await getUserFromRequest(req);
+
+  if (address.user.id !== user.id) {
+    return res.status(403).json({ message: "forbidden" });
+  }
+
+  await address.remove();
+  return res.json({ success: true });
 });
 
 export default addressesRouter;
