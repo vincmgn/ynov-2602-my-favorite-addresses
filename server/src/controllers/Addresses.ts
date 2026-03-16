@@ -85,4 +85,31 @@ addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
   return res.json({ success: true });
 });
 
+addressesRouter.put("/:id", isAuthorized, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { name, description } = req.body;
+
+  if (!name && description === undefined) {
+    return res.status(400).json({ message: "at least one field (name or description) is required" });
+  }
+
+  const address = await Address.findOne({ where: { id }, relations: ["user"] });
+
+  if (!address) {
+    return res.status(404).json({ message: "address not found" });
+  }
+
+  const user = await getUserFromRequest(req);
+
+  if (!checkOwnership(address, user.id)) {
+    return res.status(403).json({ message: "forbidden" });
+  }
+
+  if (name) address.name = name;
+  if (description !== undefined) address.description = description;
+
+  await address.save();
+  return res.json({ item: address });
+});
+
 export default addressesRouter;
