@@ -4,7 +4,7 @@ import { Address } from "../entities/Address";
 import { isAuthorized } from "../utils/isAuthorized";
 import { getUserFromRequest } from "../utils/getUserFromRequest";
 import { getDistance } from "../utils/getDistance";
-import { checkOwnership } from "../utils/checkOwnership";
+import { checkOwnership, findAddressAndCheckOwnership } from "../utils/checkOwnership";
 
 const addressesRouter = Router();
 
@@ -69,17 +69,10 @@ addressesRouter.post("/searches", isAuthorized, async (req, res) => {
 
 addressesRouter.delete("/:id", isAuthorized, async (req, res) => {
   const id = parseInt(req.params.id);
-  const address = await Address.findOne({ where: { id }, relations: ["user"] });
-
-  if (!address) {
-    return res.status(404).json({ message: "address not found" });
-  }
-
   const user = await getUserFromRequest(req);
+  const address = await findAddressAndCheckOwnership(id, user.id, res);
 
-  if (!checkOwnership(address, user.id)) {
-    return res.status(403).json({ message: "forbidden" });
-  }
+  if (!address) return;
 
   await address.remove();
   return res.json({ success: true });
@@ -93,17 +86,10 @@ addressesRouter.put("/:id", isAuthorized, async (req, res) => {
     return res.status(400).json({ message: "at least one field (name or description) is required" });
   }
 
-  const address = await Address.findOne({ where: { id }, relations: ["user"] });
-
-  if (!address) {
-    return res.status(404).json({ message: "address not found" });
-  }
-
   const user = await getUserFromRequest(req);
+  const address = await findAddressAndCheckOwnership(id, user.id, res);
 
-  if (!checkOwnership(address, user.id)) {
-    return res.status(403).json({ message: "forbidden" });
-  }
+  if (!address) return;
 
   if (name) address.name = name;
   if (description !== undefined) address.description = description;
