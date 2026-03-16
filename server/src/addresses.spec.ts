@@ -15,6 +15,11 @@ describe("Addresses Controller Integration Tests", () => {
   let authToken: string;
   let userId: number;
 
+  // Second user to test cross-ownership (403 cases)
+  const otherUserEmail = faker.internet.email();
+  const otherUserPassword = faker.internet.password();
+  let otherAuthToken: string;
+
   beforeAll(async () => {
     if (!datasource.isInitialized) {
       await datasource.initialize();
@@ -34,6 +39,17 @@ describe("Addresses Controller Integration Tests", () => {
 
     const user = await User.findOneBy({ email: userEmail });
     userId = user!.id;
+
+    // Create second user
+    await request(app).post("/api/users").send({
+      email: otherUserEmail,
+      password: otherUserPassword,
+    });
+    const otherLoginRes = await request(app).post("/api/users/tokens").send({
+      email: otherUserEmail,
+      password: otherUserPassword,
+    });
+    otherAuthToken = otherLoginRes.body.token;
   });
 
   afterAll(async () => {
@@ -41,6 +57,12 @@ describe("Addresses Controller Integration Tests", () => {
     if (user) {
       await Address.delete({ user: { id: user.id } });
       await user.remove();
+    }
+
+    const otherUser = await User.findOneBy({ email: otherUserEmail });
+    if (otherUser) {
+      await Address.delete({ user: { id: otherUser.id } });
+      await otherUser.remove();
     }
 
     if (datasource.isInitialized) {
@@ -146,6 +168,102 @@ describe("Addresses Controller Integration Tests", () => {
 
       expect(response.status).toBe(200);
       expect(response.body.items.filter((a: any) => a.name === "Paris").length).toBe(0);
+    });
+  });
+
+  describe("DELETE /api/addresses/:id", () => {
+    let addressToDeleteId: number;
+    let addressOwnedByOtherUserId: number;
+
+    beforeAll(async () => {
+      // Create an address owned by the main user
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          features: [{ geometry: { coordinates: [2.3522, 48.8566] } }],
+        },
+      });
+
+      const res = await request(app).post("/api/addresses").set("Authorization", `Bearer ${authToken}`).send({ name: "Address To Delete", searchWord: "Paris" });
+      addressToDeleteId = res.body.item.id;
+
+      // Create an address owned by the OTHER user
+      const otherRes = await request(app).post("/api/addresses").set("Authorization", `Bearer ${otherAuthToken}`).send({ name: "Other User Address", searchWord: "Paris" });
+      addressOwnedByOtherUserId = otherRes.body.item.id;
+    });
+
+    test("should delete an address that belongs to the current user", async () => {
+      const response = await request(app).delete(`/api/addresses/${addressToDeleteId}`).set("Authorization", `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+
+      // Confirm it's really gone
+      const deleted = await Address.findOneBy({ id: addressToDeleteId });
+      expect(deleted).toBeNull();
+    });
+
+    test("should return 404 when deleting a non-existent address", async () => {
+      const response = await request(app).delete("/api/addresses/99999").set("Authorization", `Bearer ${authToken}`);
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("address not found");
+    });
+
+    test("should return 403 when deleting an address owned by another user", async () => {
+      const response = await request(app).delete(`/api/addresses/${addressOwnedByOtherUserId}`).set("Authorization", `Bearer ${authToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe("forbidden");
+    });
+  });
+
+  describe("PUT /api/addresses/:id", () => {
+    let addressToUpdateId: number;
+    let addressOwnedByOtherUserId: number;
+
+    beforeAll(async () => {
+      mockedAxios.get.mockResolvedValue({
+        data: {
+          features: [{ geometry: { coordinates: [2.3522, 48.8566] } }],
+        },
+      });
+
+      // Create an address owned by the main user
+      const res = await request(app).post("/api/addresses").set("Authorization", `Bearer ${authToken}`).send({ name: "Address To Update", searchWord: "Paris", description: "Old description" });
+      addressToUpdateId = res.body.item.id;
+
+      // Create an address owned by the OTHER user
+      const otherRes = await request(app).post("/api/addresses").set("Authorization", `Bearer ${otherAuthToken}`).send({ name: "Other User Address For PUT", searchWord: "Paris" });
+      addressOwnedByOtherUserId = otherRes.body.item.id;
+    });
+
+    test("should update name and description of an address that belongs to the current user", async () => {
+      const response = await request(app).put(`/api/addresses/${addressToUpdateId}`).set("Authorization", `Bearer ${authToken}`).send({ name: "Updated Name", description: "New description" });
+
+      expect(response.status).toBe(200);
+      expect(response.body.item.name).toBe("Updated Name");
+      expect(response.body.item.description).toBe("New description");
+    });
+
+    test("should return 404 when updating a non-existent address", async () => {
+      const response = await request(app).put("/api/addresses/99999").set("Authorization", `Bearer ${authToken}`).send({ name: "Whatever" });
+
+      expect(response.status).toBe(404);
+      expect(response.body.message).toBe("address not found");
+    });
+
+    test("should return 403 when updating an address owned by another user", async () => {
+      const response = await request(app).put(`/api/addresses/${addressOwnedByOtherUserId}`).set("Authorization", `Bearer ${authToken}`).send({ name: "Hacked name" });
+
+      expect(response.status).toBe(403);
+      expect(response.body.message).toBe("forbidden");
+    });
+
+    test("should return 400 when body has no valid fields to update", async () => {
+      const response = await request(app).put(`/api/addresses/${addressToUpdateId}`).set("Authorization", `Bearer ${authToken}`).send({});
+
+      expect(response.status).toBe(400);
+      expect(response.body.message).toBe("at least one field (name or description) is required");
     });
   });
 });
